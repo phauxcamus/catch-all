@@ -1,6 +1,8 @@
 # TODO: Title
 TODO: description
 
+You will need a [Personal Access Token](https://account.smartthings.com/tokens/new) and the [Device ID](https://graph.api.smartthings.com/device/list) to fetch the data.
+
 API Reference: https://developer.smartthings.com/docs/getting-started/welcome
 
 # Nodes
