@@ -3,13 +3,6 @@ TODO: description
 
 API Reference: https://developer.smartthings.com/docs/getting-started/welcome
 
-# Script
-```powershell
-$PA_TOKEN = '' # https://account.smartthings.com/tokens/new
-$DEVICE_ID = '' # https://graph.api.smartthings.com/device/list
-$result = Invoke-RestMethod -Headers @{'Authorization' = "Bearer $($PA_TOKEN)"} -Uri "https://api.smartthings.com/v1/devices/$($DEVICE_ID)/status"
-```
-
 # Nodes
 $result.components: (your available nodes may be different depending on the model of refridgerator)
 
