@@ -1,69 +1,54 @@
-# Source:
-# https://pyimagesearch.com/2017/02/13/recognizing-digits-with-opencv-and-python/
-
-# import the necessary packages
-from imutils.perspective import four_point_transform
-from imutils import contours
-import imutils
 import cv2
+import numpy as np
+import pytesseract
 
-# define the dictionary of digit segments so we can identify
-# each digit on the thermostat
-DIGITS_LOOKUP = {
-	(1, 1, 1, 0, 1, 1, 1): 0,
-	(0, 0, 1, 0, 0, 1, 0): 1,
-	(1, 0, 1, 1, 1, 1, 0): 2,
-	(1, 0, 1, 1, 0, 1, 1): 3,
-	(0, 1, 1, 1, 0, 1, 0): 4,
-	(1, 1, 0, 1, 0, 1, 1): 5,
-	(1, 1, 0, 1, 1, 1, 1): 6,
-	(1, 0, 1, 0, 0, 1, 0): 7,
-	(1, 1, 1, 1, 1, 1, 1): 8,
-	(1, 1, 1, 1, 0, 1, 1): 9
-}
+# Initialize the webcam
+cap = cv2.VideoCapture(0)
 
-# load the example image
-image = cv2.imread("sample.jpg")
+while True:
+    # Capture a frame from the webcam
+    ret, frame = cap.read()
 
-# pre-process the image by resizing it, converting it to
-# graycale, blurring it, and computing an edge map
-# image = imutils.resize(image, height=500)
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-edged = cv2.Canny(blurred, 50, 200, 255)
-cv2.imwrite(filename='sample.1-edged.jpg',img=edged) # Progress output
+    # Convert the frame to grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-# find contours in the edge map, then sort them by their
-# size in descending order
-cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-cnts = imutils.grab_contours(cnts)
-cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
-displayCnt = None
+    # Apply a Gaussian blur to reduce noise
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
-# loop over the contours
-for c in cnts:
-	# approximate the contour
-	peri = cv2.arcLength(c, True)
-	approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-	
-	# if the contour has four vertices, then we have found
-	# the thermostat display
-	if len(approx) == 4:
-		displayCnt = approx
-		break
+    # Threshold the image to create a binary image
+    _, thresholded = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
 
-# extract the thermostat display, apply a perspective transform
-# to it
-warped = four_point_transform(gray, displayCnt.reshape(4, 2))
-output = four_point_transform(image, displayCnt.reshape(4, 2))
-cv2.imwrite(filename='sample.2-warped.jpg',img=warped) # Progress output
-cv2.imwrite(filename='sample.3-warpedoutput.jpg',img=output) # Progress output
+    # Find contours in the binary image
+    contours, _ = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-# threshold the warped image, then apply a series of morphological
-# operations to cleanup the thresholded image
-thresh = cv2.threshold(warped, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
-cv2.imwrite(filename='sample.4-thresh.jpg',img=thresh) # Progress output
+    # Initialize an empty list to store recognized numbers
+    recognized_numbers = []
 
-kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 5))
-morph = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-cv2.imwrite(filename='sample.5-morph.jpg',img=morph) # Progress output
+    for contour in contours:
+        # Approximate the contour to a polygon
+        epsilon = 0.05 * cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, epsilon, True)
+
+        # Check if the polygon has 7 vertices (a seven-segment display typically has 7 segments)
+        if len(approx) == 7:
+            # Get the ROI of the seven-segment display
+            x, y, w, h = cv2.boundingRect(contour)
+            roi = frame[y:y + h, x:x + w]
+
+            # Perform OCR on the ROI to recognize the number
+            number = pytesseract.image_to_string(roi, config='--psm 6')
+            recognized_numbers.append(number)
+
+    # Display the frame with recognized numbers
+    for number in recognized_numbers:
+        cv2.putText(frame, number, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+    cv2.imshow('Seven-Segment Display Reader', frame)
+
+    # Exit the loop when the 'q' key is pressed
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release the webcam and close OpenCV windows
+cap.release()
+cv2.destroyAllWindows()
