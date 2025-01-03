@@ -4,6 +4,7 @@
     "author"   : "Phaux",
     "website"  : "https://phaux.uno/",
     "model"    : "why_oh_ming.tflite",
+    "trained_languages": ["en"],
     "version"  : 2,
     "micro"    : {
       "probability_cutoff"     : 0.97,
